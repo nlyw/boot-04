@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.w3.org/1999/xhtml"
+      xmlns:shiro="http://www.pollix.at/thymeleaf/shiro">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+
+    <link rel="stylesheet" th:href="${#httpServletRequest.getContextPath()} + '/quartz/bootstrap.min.css'">
+    <link rel="stylesheet" th:href="${#httpServletRequest.getContextPath()} + '/quartz/font/font-awesome.min.css'">
+    <link rel="stylesheet" th:href="${#httpServletRequest.getContextPath()} + '/quartz/cronGen.css'">
+</head>
+<body>
+
+<div id="task_dg_toolbar" class="data_tool_bar_div">
+    <button class="layui-btn" onclick="add_task()">添加</button>
+</div>
+
+<table id="task_dg" lay-filter="task_dg_f"></table>
+
+<div id="task_dg_right_toolbar" class="data_tool_bar_div">
+    <a class="layui-btn layui-btn-xs" lay-event="delete">删除任务</a>
+    {{# if(d.taskFlag == 1){ }}
+        <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="stop">停止任务</a>
+    {{#}}}
+    {{# if(d.taskFlag != 1){ }}
+        <a class="layui-btn layui-btn-xs" lay-event="start">开始任务</a>
+    {{#}}}
+</div>
+
+<script type="text/javascript" th:src="${#httpServletRequest.getContextPath()} + '/quartz/cronGen.js'"></script>
+<script type="text/javascript" th:src="${#httpServletRequest.getContextPath()} + '/quartz/bootstrap.min.js'"></script>
+
+<script type="text/javascript" th:inline="javascript">
+    /*<![CDATA[*/
+    var ctxPath = /*[[@{/}]]*/ '';
+    /*]]>*/
+</script>
+<script th:inline="none">
+
+    var table = layui.table;
+    //初始化数据表格
+    var task_list_table = table.render({
+        elem: '#task_dg'
+        ,page:true
+        ,limits:[5,10]
+        ,limit:5
+        ,url: ctxPath + '/task/list' //数据接口
+        ,cols: [[ //表头
+            {type:'checkbox'}//开启复选框
+            ,{field: 'taskID', title: '序号', sort: true}
+            ,{field: 'taskKey', title: '任务名称'}
+            ,{field: 'taskDesc', title: '任务描述'}
+            ,{field: 'taskCron', title: '执行规则'}
+            ,{field: 'taskFlag', title: '执行状态', templet: function(d) {
+                    var book_type_str = "";
+                    if (0 == d.taskFlag) {
+                        book_type_str = "等待执行";
+                    } else if (1 == d.taskFlag) {
+                        book_type_str = "正在执行";
+                    }
+                    return book_type_str;
+                }}
+            ,{field: 'taskClass', title: '执行类'}
+            ,{field: 'taskMethod', title: '执行方法'}
+            ,{fixed: 'right', title: '操作', toolbar: '#task_dg_right_toolbar', width:180}
+        ]]
+        ,toolbar:"#task_dg_toolbar"
+    });
+
+    //配置数据表格的监听
+    table.on("tool(task_dg_f)", function(obj) {
+        var data = obj.data;
+        if ("delete" == obj.event) {
+            //删除按钮被点击了
+            delete_task(data.taskID, data.taskFlag);
+        }
+        if ("stop" == obj.event) {
+            //停止按钮被点击了
+            update_task(data.taskID, "stop");
+        }
+        if ("start" == obj.event) {
+            //开始按钮被点击了
+            update_task(data.taskID, "start");
+        }
+    });
+
+    //删除任务
+    function delete_task(task_id, task_flag) {
+        layer.confirm("是否确认删除任务？",{title:'删除提示'},function(index) {
+            $.get(ctxPath + "/task/deleteTask", {taskID:task_id, taskFlag:task_flag},function(data) {
+                //关闭提示框
+                layer.close(index);
+                //刷新列表
+                task_list_table.reload();
+            });
+        });
+    }
+    
+    //修改任务
+    function update_task(task_id, btn) {
+        $.get(ctxPath + "/task/updateTask", {taskID:task_id, btn:btn},function(data) {
+            //刷新列表
+            task_list_table.reload();
+        });
+    }
+
+    //添加任务
+    function add_task() {
+        //发起ajax请求，获取添加页面
+        $.ajax({
+            url:ctxPath + "/task/toAdd",
+            success:function(data) {
+                var layer = layui.layer;
+                var task_add_layer = layer.open({
+                    type:1,
+                    title:"添加任务",
+                    content:data,
+                    area:["680px","580px"],
+                    anim:4,
+                    maxmin:true,
+                    btn:["提交", "重置"],
+                    yes:function() {
+                        //使用js触发添加页面隐藏按钮的点击时间
+                        $("#add_task_hide_btn").click();
+                        //把数据提交到后台
+                        $.ajax({
+                            url:ctxPath + "/task/insert",
+                            data:$("#task_add_form").serialize(),
+                            success:function(data) {
+                                //关闭对话框
+                                layer.close(task_add_layer);
+                                //刷新列表
+                                task_list_table.reload();
+                            }
+                        });
+                    },
+                });
+            }
+        });
+    }
+
+
+</script>
+
+</body>
+</html>

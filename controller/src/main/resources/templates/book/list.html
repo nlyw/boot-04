@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.w3.org/1999/xhtml"
+      xmlns:shiro="http://www.pollix.at/thymeleaf/shiro">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+
+
+<div id="book_dg_toolbar" class="data_tool_bar_div">
+    <!--<button class="layui-btn" onclick="open_add_book_page()">新增</button>-->
+    <span shiro:hasAnyPermissions="/book/deleteAll">
+        <button class="layui-btn" onclick="delete_checked_book()">删除</button>
+    </span>
+</div>
+
+<table id="book_dg" lay-filter="book_dg_f"></table>
+
+
+<script type="text/javascript" th:inline="javascript">
+    /*<![CDATA[*/
+    var ctxPath = /*[[@{/}]]*/ '';
+    /*]]>*/
+</script>
+<script th:inline="none">
+    var table = layui.table;
+
+    //初始化数据表格
+    var book_list_table = table.render({
+        elem: '#book_dg'
+        ,page:true
+        ,limits:[5,10]
+        ,limit:5
+        ,url: ctxPath + '/book/list' //数据接口
+        ,cols: [[ //表头
+            {type:'checkbox'}//开启复选框
+            ,{field: 'bookID', title: '序号', width:80, sort: true}
+            ,{field: 'bookName', title: '书籍名称', width:80}
+            ,{field: 'bookAuthor', title: '书籍作者', width:80}
+            ,{field: 'bookType', title: '书籍类别', width:80, templet: function(d) {
+                    var book_type_str = "";
+                    if (0 == d.bookType) {
+                        book_type_str = "武侠";
+                    } else if (1 == d.bookType) {
+                        book_type_str = "科幻";
+                    } else if (2 == d.bookType) {
+                        book_type_str = "盗墓";
+                    }
+                    return book_type_str;
+                }}
+            ,{field: 'bookPrice', title: '书籍价格', width:80}
+            ,{field: 'bookDesc', title: '书籍描述', width:80}
+            ,{field: 'bookDateStr', title: '书籍日期'}
+        ]]
+        ,toolbar:"#book_dg_toolbar"
+    });
+
+    //删除
+    function delete_checked_book() {
+        //获取选中数据
+        var book_rows = table.checkStatus("book_dg");
+
+        //别忘了提示至少选择一条
+        if (null != book_rows.data && 0 < book_rows.data.length) {
+            //提示是否删除数据
+            layer.confirm("是否确认删除数据？",{title:'删除提示'},function(index) {
+                //声明一个空字符串，用来拼写id
+                var book_ids = "";
+                //获取到所有选中数据的id
+                for (var i = 0; i < book_rows.data.length; i++) {
+                    book_ids = book_ids + "," + book_rows.data[i].bookID;
+                }
+                if (0 < book_ids.length) {
+                    //截取掉第一个逗号
+                    book_ids = book_ids.substring(1);
+                }
+                //使用ajax删除
+                $.ajax({
+                    url:ctxPath + "/book/deleteAll",
+                    data:{bookIDS:book_ids},
+                    //dataType:"",//返回值类型
+                    //type:"",//请求提交方式（get/post）
+                    success:function(data) {
+                        //关闭提示框
+                        layer.close(index);
+                        //刷新数据表格
+                        book_list_table.reload();
+                    }
+                });
+            });
+        } else {
+            //没有选中数据
+            layer.alert("请至少选中一条数据！");
+        }
+    }
+
+
+
+
+
+</script>
+
+</body>
+</html>
