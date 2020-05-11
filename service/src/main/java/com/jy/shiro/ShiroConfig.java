@@ -2,9 +2,14 @@ package com.jy.shiro;
 
 import at.pollux.thymeleaf.shiro.dialect.ShiroDialect;
 import org.apache.shiro.mgt.SecurityManager;
+import org.apache.shiro.session.mgt.SessionManager;
+import org.apache.shiro.session.mgt.eis.JavaUuidSessionIdGenerator;
 import org.apache.shiro.spring.security.interceptor.AuthorizationAttributeSourceAdvisor;
 import org.apache.shiro.spring.web.ShiroFilterFactoryBean;
 import org.apache.shiro.web.mgt.DefaultWebSecurityManager;
+import org.crazycake.shiro.RedisCacheManager;
+import org.crazycake.shiro.RedisManager;
+import org.crazycake.shiro.RedisSessionDAO;
 import org.springframework.aop.framework.autoproxy.DefaultAdvisorAutoProxyCreator;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -16,6 +21,10 @@ import java.util.Map;
 
 @Configuration
 public class ShiroConfig {
+
+    private String host = "127.0.0.1";
+    private int port = 6379;
+    private int timeout = 5000;
 
     /**
      * 生成shiro过滤器的工厂实例
@@ -85,13 +94,13 @@ public class ShiroConfig {
 
     //安全管理器，配置主要是Realm的管理认证
     @Bean
-    public SecurityManager securityManager(RealmConfig realmConfig){
+    public SecurityManager securityManager(RealmConfig realmConfig, SessionManager sessionManager, RedisCacheManager cacheManager){
         DefaultWebSecurityManager securityManager =  new DefaultWebSecurityManager();
         securityManager.setRealm(realmConfig);        //设置realm.
         // 自定义缓存实现 使用redis
-        // securityManager.setCacheManager(redisCacheManager());
+        securityManager.setCacheManager(cacheManager);
         // 自定义session管理 使用redis
-        //securityManager.setSessionManager(sessionManager());
+        securityManager.setSessionManager(sessionManager);
         return securityManager;
     }
 
@@ -101,6 +110,86 @@ public class ShiroConfig {
         RealmConfig myShiroRealm = new RealmConfig();
         //myShiroRealm.setCredentialsMatcher(getMatcher());
         return myShiroRealm;
+    }
+
+
+    /**
+     * RedisSessionDAO shiro sessionDao层的实现 通过redis, 使用的是shiro-redis开源插件
+     * create by: leigq
+     * create time: 2019/7/3 14:30
+     *
+     * @return RedisSessionDAO
+     */
+    @Bean
+    public RedisSessionDAO redisSessionDAO(JavaUuidSessionIdGenerator idGenerator) {
+        RedisSessionDAO redisSessionDAO = new RedisSessionDAO();
+        redisSessionDAO.setRedisManager(redisManager());
+        redisSessionDAO.setSessionIdGenerator(idGenerator);
+        redisSessionDAO.setExpire(1800);
+        return redisSessionDAO;
+    }
+
+    /**
+     * Session ID 生成器
+     * <br/>
+     * create by: leigq
+     * <br/>
+     * create time: 2019/7/3 16:08
+     *
+     * @return JavaUuidSessionIdGenerator
+     */
+    @Bean
+    public JavaUuidSessionIdGenerator sessionIdGenerator() {
+        return new JavaUuidSessionIdGenerator();
+    }
+
+    /**
+     * 配置shiro redisManager, 使用的是shiro-redis开源插件
+     * <br/>
+     * create by: leigq
+     * <br/>
+     * create time: 2019/7/3 14:33
+     *
+     * @return RedisManager
+     */
+    private RedisManager redisManager() {
+        RedisManager redisManager = new RedisManager();
+        redisManager.setHost(host);
+        redisManager.setPort(port);
+        redisManager.setTimeout(timeout);
+        return redisManager;
+    }
+
+    /**
+     * 自定义sessionManager
+     * create by: leigq
+     * create time: 2019/7/3 14:31
+     *
+     * @return SessionManager
+     */
+    @Bean
+    public SessionManager sessionManager(RedisSessionDAO redisSessionDAO) {
+        MySessionManager mySessionManager = new MySessionManager();
+        mySessionManager.setSessionDAO(redisSessionDAO);
+        return mySessionManager;
+    }
+
+    /**
+     * cacheManager 缓存 redis实现, 使用的是shiro-redis开源插件
+     * <br/>
+     * create by: leigq
+     * <br/>
+     * create time: 2019/7/3 14:33
+     *
+     * @return RedisCacheManager
+     */
+    @Bean
+    public RedisCacheManager cacheManager() {
+        RedisCacheManager redisCacheManager = new RedisCacheManager();
+        redisCacheManager.setRedisManager(redisManager());
+        // 必须要设置主键名称，shiro-redis 插件用过这个缓存用户信息
+        redisCacheManager.setPrincipalIdFieldName("userID");
+        return redisCacheManager;
     }
 
     //生成自定义roleOr关系处理的实例

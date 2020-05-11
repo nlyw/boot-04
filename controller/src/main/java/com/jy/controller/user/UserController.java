@@ -53,6 +53,7 @@ public class UserController {
                 map.put("code", 1);
             }
         } catch (AuthenticationException authenticationException) {
+            authenticationException.printStackTrace();
             map.put("code", 0);
         } finally {
             return map;

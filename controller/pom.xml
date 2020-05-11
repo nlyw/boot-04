@@ -6,7 +6,6 @@
 		<groupId>com.jy</groupId>
 		<artifactId>boot-04</artifactId>
 		<version>0.0.1-SNAPSHOT</version>
-		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.jy</groupId>
 	<artifactId>controller</artifactId>
@@ -33,13 +32,15 @@
 			<artifactId>spring-boot-starter-thymeleaf</artifactId>
 		</dependency>
 
-		<!-- 开发工具：用于页面热加载 -->
-		<dependency>
+		<!-- 开发工具：用于页面热加载
+		与redis冲突，需要干掉
+		-->
+		<!--<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-devtools</artifactId>
 			<scope>runtime</scope>
 			<optional>true</optional>
-		</dependency>
+		</dependency>-->
 	</dependencies>
 
 	<build>
